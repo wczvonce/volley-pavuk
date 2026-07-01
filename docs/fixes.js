@@ -36,49 +36,63 @@ slotButton=function(id,which,st){
 function suspicious(v){
  if(!v)return true;
  const parts=v.split("/").map(x=>x.trim());
- return parts.length!==2||parts.some(x=>x.length<2)||/\d/.test(v);
+ return parts.length!==2||parts.some(x=>x.length<2);
+}
+function inlineError(text=""){
+ const actions=document.querySelector("#seedReview .seed-actions");
+ if(!actions)return;
+ let box=document.getElementById("seedInlineError");
+ if(!box){box=document.createElement("div");box.id="seedInlineError";box.style.cssText="display:none;margin:10px 0 0;padding:9px 10px;border:1px solid #ff8a65;border-radius:8px;color:#ffb199;background:rgba(255,138,101,.08);font-size:.76rem;line-height:1.35";actions.before(box)}
+ box.textContent=text;box.style.display=text?"block":"none";
+}
+function rows(){return[...document.querySelectorAll("#seedRows .seed-row")]}
+function refreshRows(){
+ const all=rows();if(!all.length)return;
+ const values=all.map(r=>r.querySelector(".seed-input")?.value.trim()||"");
+ let lastFilled=-1;values.forEach((v,i)=>{if(v)lastFilled=i});
+ all.forEach((row,i)=>{
+  const input=row.querySelector(".seed-input"),btn=row.querySelector(".bye-btn");if(!input||!btn)return;
+  const value=input.value.trim(),trailing=!value&&i>lastFilled,manual=input.dataset.manualBye==="1";
+  if(trailing){input.dataset.byeConfirmed="1";input.dataset.autoBye="1"}
+  else{input.dataset.autoBye="0";input.dataset.byeConfirmed=manual?"1":"0"}
+  const confirmed=input.dataset.byeConfirmed==="1";
+  const warn=(!value&&!confirmed)||(value&&suspicious(value));
+  row.classList.toggle("warn",warn);
+  row.classList.toggle("bye",!value);
+  btn.textContent=value?"Nastaviť BYE":(trailing?"BYE automaticky":confirmed?"BYE potvrdené":"Potvrdiť BYE");
+ });
+ const summary=document.getElementById("seedSummary");
+ if(summary)summary.textContent="Skontroluj rozpoznané dvojice. Prázdne riadky na konci sa automaticky použijú ako BYE.";
 }
 function decorateRows(){
- const rows=[...document.querySelectorAll("#seedRows .seed-row")];
- if(!rows.length)return;
- const sum=document.getElementById("seedSummary");
- if(sum)sum.textContent="Skontroluj všetkých 16 riadkov. Každý prázdny riadok musíš potvrdiť tlačidlom BYE.";
- for(const row of rows){
+ for(const row of rows()){
   if(row.dataset.checkedGuard)continue;
   row.dataset.checkedGuard="1";
-  row.dataset.ocrWarn=row.classList.contains("warn")?"1":"0";
-  const input=row.querySelector(".seed-input"),btn=row.querySelector(".bye-btn");
-  if(!input||!btn)continue;
-  input.dataset.byeConfirmed="0";
-  const check=()=>{
-   const value=input.value.trim(),confirmed=input.dataset.byeConfirmed==="1";
-   const warn=(!value&&!confirmed)||(value&&(row.dataset.ocrWarn==="1"||suspicious(value)));
-   row.classList.toggle("warn",!!warn);
-   row.classList.toggle("bye",!value);
-   btn.textContent=!value&&confirmed?"BYE potvrdené":"Potvrdiť BYE";
-  };
-  btn.addEventListener("click",()=>{input.dataset.byeConfirmed="1";check()});
-  input.addEventListener("input",()=>{input.dataset.byeConfirmed="0";check()});
-  check();
+  const input=row.querySelector(".seed-input"),btn=row.querySelector(".bye-btn");if(!input||!btn)continue;
+  input.dataset.manualBye="0";input.dataset.byeConfirmed="0";input.dataset.autoBye="0";
+  btn.addEventListener("click",()=>{input.dataset.manualBye="1";input.dataset.byeConfirmed="1";setTimeout(refreshRows,0)});
+  input.addEventListener("input",()=>{input.dataset.manualBye="0";input.dataset.byeConfirmed="0";refreshRows()});
  }
+ refreshRows();
 }
 const rowsEl=document.getElementById("seedRows");
 if(rowsEl)new MutationObserver(decorateRows).observe(rowsEl,{childList:true});
 const createBtn=document.getElementById("seedCreate");
 if(createBtn)createBtn.addEventListener("click",e=>{
- const rows=[...document.querySelectorAll("#seedRows .seed-row")];
- const unconfirmed=[],bad=[],seen=new Map(),dupes=[];
- rows.forEach((row,i)=>{
+ refreshRows();
+ const all=rows(),unconfirmed=[],bad=[],seen=new Map(),dupes=[];
+ all.forEach((row,i)=>{
   const input=row.querySelector(".seed-input"),v=input?.value.trim()||"";
   if(!v&&input?.dataset.byeConfirmed!=="1")unconfirmed.push("S"+(i+1));
   if(v&&suspicious(v))bad.push("S"+(i+1));
   if(v){const key=v.toLocaleLowerCase("sk").replace(/\s+/g," ");if(seen.has(key))dupes.push("S"+(i+1));else seen.set(key,i)}
  });
  let text="";
- if(unconfirmed.length)text=`Potvrď BYE pri: ${unconfirmed.join(", ")}, alebo doplň chýbajúce mená.`;
+ if(unconfirmed.length)text=`Doplň chýbajúcu dvojicu alebo potvrď BYE pri: ${unconfirmed.join(", ")}.`;
  else if(bad.length)text=`Skontroluj formát dvojice pri: ${bad.join(", ")}. Použi tvar Hráč 1 / Hráč 2.`;
  else if(dupes.length)text=`Rovnaká dvojica je uvedená viackrát pri: ${dupes.join(", ")}.`;
- if(text){e.preventDefault();e.stopImmediatePropagation();showMsg(text,"err");const first=document.querySelector("#seedRows .seed-row.warn");first?.scrollIntoView({behavior:"smooth",block:"center"})}
+ inlineError(text);
+ if(text){e.preventDefault();e.stopImmediatePropagation();const first=document.querySelector("#seedRows .seed-row.warn");first?.scrollIntoView({behavior:"smooth",block:"center"})}
 },true);
 render();
 })();
