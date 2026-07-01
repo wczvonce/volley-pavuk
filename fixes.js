@@ -1,6 +1,14 @@
 (()=>{
 "use strict";
 function esc(v){return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
+function wrapTesseract(){
+ const t=window.Tesseract;if(!t||t.__pavukWrapped||typeof t.createWorker!=="function")return;
+ const original=t.createWorker.bind(t);t.__pavukWrapped=true;
+ t.createWorker=async(...args)=>{const w=await original(...args),set=w.setParameters.bind(w);w.setParameters=params=>set({...params,tessedit_pageseg_mode:"6"});return w};
+}
+const originalHeadAppend=document.head.append.bind(document.head);
+document.head.append=function(...nodes){for(const n of nodes)if(n?.tagName==="SCRIPT"&&/tesseract/i.test(n.src||""))n.addEventListener("load",wrapTesseract);return originalHeadAppend(...nodes)};
+wrapTesseract();
 matchState=function(id,seen=new Set()){
  if(!M[id]||seen.has(id))return{a:null,b:null,w:null,l:null,auto:false};
  const next=new Set(seen);next.add(id);
