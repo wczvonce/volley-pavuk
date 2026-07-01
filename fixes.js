@@ -36,7 +36,7 @@ function decorateRows(){
  const sum=document.getElementById("seedSummary");
  if(sum)sum.textContent="Skontroluj všetkých 16 riadkov. Každý prázdny riadok musíš potvrdiť tlačidlom BYE.";
  for(const row of rows){
-  if(row.dataset.checkedGuard)return;
+  if(row.dataset.checkedGuard)continue;
   row.dataset.checkedGuard="1";
   row.dataset.ocrWarn=row.classList.contains("warn")?"1":"0";
   const input=row.querySelector(".seed-input"),btn=row.querySelector(".bye-btn");
