@@ -2,729 +2,94 @@
 <html lang="sk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pavúk – SVF Niké</title>
 <style>
- :root{
- --bg:#0e1216;--panel:#161e27;--panel-hi:#1e2935;--line:#283541;
- --ink:#e9eff4;--muted:#7a8a9c;--accent:#ffb02e;--accent-ink:#1a1205;
- --win:#3ddc84;--lose:#566273;--tgt:#ffb02e;--tbd:#3b4856;
- --mono:"SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
- }
- *{box-sizing:border-box}
- html,body{margin:0;background:var(--bg);color:var(--ink);
- font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
- .wrap{max-width:580px;margin:0 auto;padding:18px 14px 96px}
- header h1{font-size:1.1rem;margin:0 0 3px;letter-spacing:-.01em}
- header h1 b{color:var(--tgt)}
- header p{margin:0;color:var(--muted);font-size:.8rem;line-height:1.35}
- .upload-btn{margin-top:9px;border:1px solid var(--accent);background:transparent;
- color:var(--accent);border-radius:9px;padding:8px 12px;font-size:.82rem;font-weight:600;
- cursor:pointer;-webkit-tap-highlight-color:transparent}
- .upload-btn:active{transform:translateY(1px)}
- .upload-msg{font-size:.76rem;margin-top:6px;line-height:1.4;min-height:1em}
- .upload-msg.ok{color:var(--win)}
- .upload-msg.err{color:var(--accent)}
- header h1 b{color:var(--tgt)}
- header p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.45}
-
- .seg{display:flex;gap:6px;margin:16px 0 6px;background:var(--panel);
- border:1px solid var(--line);border-radius:11px;padding:4px}
- .seg button{flex:1;border:0;background:transparent;color:var(--muted);
- padding:9px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer}
- .seg button.on{background:var(--panel-hi);color:var(--ink)}
-
- .round{margin:14px 0 4px}
- .round-eyebrow{font:600 .66rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
- color:var(--muted);margin:0 0 9px;display:flex;align-items:center;gap:10px}
- .round-eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
- .round-eyebrow .bk{color:var(--accent)}
-
- .match{background:var(--panel);border:1px solid var(--line);border-radius:10px;
- padding:5px;margin:0 0 7px;position:relative}
- .match.on-path{border-color:rgba(255,176,46,.45)}
- .mid{position:absolute;top:5px;right:8px;font:600 .52rem/1 var(--mono);
- color:var(--muted);letter-spacing:.06em}
- .slot{display:flex;align-items:center;gap:7px;width:100%;text-align:left;
- background:var(--panel-hi);border:1.5px solid transparent;color:var(--ink);
- border-radius:7px;padding:6px 8px;margin:2px 0;cursor:pointer;font-size:.82rem;line-height:1.15;
- transition:border-color .12s,background .12s,opacity .12s;-webkit-tap-highlight-color:transparent}
- .slot:disabled{cursor:default}
- .slot .seed{font:600 .54rem/1 var(--mono);color:var(--muted);min-width:26px}
- .slot .name{flex:1;font-weight:500}
- .slot:not(:disabled):hover{border-color:var(--accent)}
- .slot.win{border-color:var(--win);background:rgba(61,220,132,.10)}
- .slot.win .seed{color:var(--win)}
- .slot.lose{opacity:.4}
- .slot.lose .name{text-decoration:line-through;text-decoration-color:var(--lose)}
- .slot.tbd{cursor:default;color:var(--tbd)}
- .slot.tbd .name{font-style:italic}
- .slot.is-tgt .name{color:var(--tgt);font-weight:700}
- .slot.is-tgt .seed{color:var(--tgt)}
- .check{margin-left:auto;width:16px;height:16px;flex:none;color:var(--win);opacity:0;transition:opacity .12s}
- .slot.win .check{opacity:1}
-
- /* ===== horizontálny bracket ===== */
- .track{margin:6px 0 22px}
- .track-title{font-size:1.02rem;font-weight:700;margin:0 0 10px;letter-spacing:-.01em}
- .track-scroll{display:flex;gap:14px;overflow-x:auto;padding:2px 2px 10px;
- scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
- .track-scroll::-webkit-scrollbar{height:6px}
- .track-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
- .col{flex:0 0 auto;width:188px;scroll-snap-align:start;display:flex;flex-direction:column}
- .col-head{font:600 .6rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;
- color:var(--muted);margin:0 0 7px;padding-bottom:5px;border-bottom:1px solid var(--line)}
- .col-stack{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:9px}
- .col-staggered .col-stack{gap:16px;padding-top:26px}
- .track .match{width:100%;margin:0}
- /* spojovacia čiara medzi stĺpcami */
- .col:not(:last-child) .match::after{content:"";position:absolute;top:50%;right:-14px;
- width:14px;height:1px;background:var(--line)}
- .col:not(:first-child) .match::before{content:"";position:absolute;top:50%;left:-14px;
- width:14px;height:1px;background:var(--line)}
- .track .match{position:relative}
-
- .out{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px;margin-top:6px}
- .out h2{font-size:.95rem;margin:0 0 4px;display:flex;align-items:center;gap:8px}
- .out h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--tgt)}
- .out .sub{color:var(--muted);font-size:.8rem;margin:0 0 12px}
-
- .step{border-left:2px solid var(--line);padding:0 0 2px 13px;margin:0 0 16px;position:relative}
- .step.cur{border-left-color:var(--tgt)}
- .step .hd{font-size:.92rem;font-weight:700;margin:0 0 4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
- .step .hd .tag{font:600 .58rem/1 var(--mono);letter-spacing:.1em;padding:3px 6px;border-radius:5px;text-transform:uppercase}
- .tag.w{background:rgba(61,220,132,.16);color:var(--win)}
- .tag.l{background:rgba(255,176,46,.16);color:var(--accent)}
- .tag.q{background:var(--panel-hi);color:var(--muted)}
- .step .body{font-size:.9rem;line-height:1.55;color:var(--ink)}
- .step .lead{color:var(--muted)}
- .vs-row{margin:5px 0;padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:9px}
- .vs-row .opt{font-weight:600}
- .vs-row .opt .s{font:600 .58rem/1 var(--mono);color:var(--muted)}
- .vs-row .vs{color:var(--muted);font-size:.8rem;margin:6px 0;letter-spacing:.05em}
- .vs-row .alt{color:var(--muted);font-weight:400}
- .opp-final{font-weight:700;color:var(--tgt)}
- .opp-final .s{font:600 .58rem/1 var(--mono);color:var(--muted)}
- .verdict{margin-top:4px;padding:11px 13px;border-radius:10px;font-weight:700;font-size:.92rem}
- .verdict.win{background:rgba(61,220,132,.12);color:var(--win)}
- .verdict.out{background:rgba(255,176,46,.12);color:var(--accent)}
-
- pre.raw{margin:0;white-space:pre-wrap;font:.8rem/1.55 var(--mono);color:var(--ink);
- background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;max-height:340px;overflow:auto}
-
- .bar{position:fixed;left:0;right:0;bottom:0;background:rgba(14,18,22,.95);
- backdrop-filter:blur(8px);border-top:1px solid var(--line);
- padding:11px 14px calc(11px + env(safe-area-inset-bottom));display:flex;gap:9px;max-width:580px;margin:0 auto}
- .btn{flex:1;border:1px solid var(--line);background:var(--panel-hi);color:var(--ink);
- border-radius:11px;padding:13px;font-size:.9rem;font-weight:600;cursor:pointer}
- .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
- .btn.ok{background:var(--win);color:#04210f;border-color:var(--win)}
- .btn:active{transform:translateY(1px)}
- @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+:root{--bg:#0e1216;--panel:#161e27;--hi:#1e2935;--line:#283541;--ink:#e9eff4;--muted:#7a8a9c;--accent:#ffb02e;--win:#3ddc84;--lose:#566273;--tbd:#3b4856;--mono:ui-monospace,"SF Mono",Consolas,monospace}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}.wrap{max-width:580px;margin:auto;padding:18px 14px 100px}h1{font-size:1.1rem;margin:0 0 4px}h1 b{color:var(--accent)}header p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.45}.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.controls label{font-size:.8rem;color:var(--muted)}select,.upload{background:var(--hi);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.84rem;font-weight:600}.upload{border-color:var(--accent);color:var(--accent);cursor:pointer}.msg{font-size:.76rem;line-height:1.4;min-height:1em;margin-top:7px}.msg.ok{color:var(--win)}.msg.err{color:#ff8a65}.track{margin:18px 0 24px}.track-title{font-size:1.05rem;font-weight:750;margin:0 0 10px}.track-scroll{display:flex;gap:14px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.track-scroll::-webkit-scrollbar{height:6px}.track-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}.col{flex:0 0 188px;display:flex;flex-direction:column;scroll-snap-align:start}.col-head{font:600 .61rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-bottom:6px;margin-bottom:8px;border-bottom:1px solid var(--line)}.col-stack{display:flex;flex-direction:column;justify-content:space-around;gap:10px;flex:1}.col.stagger .col-stack{gap:18px;padding-top:26px}.match{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px}.match.path{border-color:rgba(255,176,46,.55)}.match::after,.match::before{content:"";position:absolute;top:50%;height:1px;width:14px;background:var(--line)}.col:not(:last-child) .match::after{right:-14px}.col:not(:first-child) .match::before{left:-14px}.mid{position:absolute;right:8px;top:5px;font:600 .53rem/1 var(--mono);color:var(--muted)}.auto{position:absolute;right:7px;bottom:5px;font:600 .48rem/1 var(--mono);color:var(--win)}.slot{display:flex;align-items:center;gap:7px;width:100%;border:1.5px solid transparent;border-radius:8px;background:var(--hi);color:var(--ink);padding:7px 8px;margin:2px 0;text-align:left;font-size:.83rem;line-height:1.15;cursor:pointer}.slot:disabled{cursor:default}.seed{font:600 .55rem/1 var(--mono);color:var(--muted);min-width:28px}.name{flex:1;font-weight:600}.slot.win{border-color:var(--win);background:rgba(61,220,132,.10)}.slot.win .seed{color:var(--win)}.slot.lose{opacity:.4}.slot.lose .name{text-decoration:line-through;text-decoration-color:var(--lose)}.slot.tbd{color:var(--tbd)}.slot.tbd .name{font-style:italic}.slot.target .name,.slot.target .seed{color:var(--accent)}.check{width:16px;height:16px;opacity:0;color:var(--win);flex:none}.slot.win .check{opacity:1}.bar{position:fixed;left:0;right:0;bottom:0;max-width:580px;margin:auto;display:flex;gap:9px;padding:11px 14px calc(11px + env(safe-area-inset-bottom));background:rgba(14,18,22,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line)}.btn{flex:1;border:1px solid var(--line);border-radius:12px;background:var(--hi);color:var(--ink);padding:13px;font-size:.9rem;font-weight:700}.btn.primary{background:var(--accent);border-color:var(--accent);color:#1a1205}.btn.ok{background:var(--win);border-color:var(--win);color:#052312}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
- <header>
- <h1>🏐 Pavúk – <b id="myName">—</b> <span id="mySeedTag" style="color:var(--muted);font-weight:400"></span></h1>
- <p>16 dvojíc, dvojitá eliminácia. Klikáš víťaza každého zápasu — vetva pre tvoju dvojicu sa zužuje sama.</p>
- <div style="margin-top:9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
- <label for="mySel" style="font-size:.8rem;color:var(--muted)">Moja dvojica:</label>
- <select id="mySel" style="background:var(--panel-hi);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:.85rem;font-weight:600;-webkit-tap-highlight-color:transparent"></select>
- </div>
- <button class="upload-btn" id="uploadBtn">📄 Načítať PDF / Excel s rozpisom</button>
- <input type="file" id="pdfInput" accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
- <div class="upload-msg" id="uploadMsg"></div>
- </header>
-
- <div id="view"></div>
+<header>
+<h1>🏐 Pavúk – <b id="myName">—</b> <span id="mySeed" style="color:var(--muted);font-weight:400"></span></h1>
+<p>16 dvojíc, dvojitá eliminácia. Po nahratí Excelu sa načítajú mená aj presné prepojenia W/L/BYE.</p>
+<div class="controls"><label for="teamSel">Moja dvojica:</label><select id="teamSel"></select><button class="upload" id="uploadBtn">📄 Načítať PDF / Excel</button><input id="fileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf" hidden></div>
+<div id="msg" class="msg"></div>
+</header>
+<div id="view"></div>
 </div>
-
-<nav class="bar">
- <button class="btn primary" id="copy">Kopírovať vetvu</button>
- <button class="btn" id="default" hidden>Demo</button>
- <button class="btn" id="reset">Reset</button>
-</nav>
-
+<nav class="bar"><button id="copyBtn" class="btn primary">Kopírovať vetvu</button><button id="resetBtn" class="btn">Reset výsledkov</button></nav>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 "use strict";
-if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";}
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
 
-/* ===== SEEDS (default: Prešov "A", 27.-28.6.2026 MUŽI) ===== */
-const TEAMS={
- S1:"Nemec / Berčík J.",S2:"Marčok / Pavlinský",S3:"Petro / Zsoldos",S4:"Šíma / Lukáč",
- S5:"Ludha / Kubš",S6:"Povrazník / Pokopec",S7:"Petráš / Neštický",S8:"Janto / Královič",
- S9:"Hajzuš / Červenák L.",S10:"Dzurík / Šemanský",S11:"Gréč / Žák",S12:"Sýkora / Korec",
- S13:"S13",S14:"S14",S15:"S15",S16:"S16"
+const BYE="BYE";
+const TEAMS={S1:"Povrazník / Petro",S2:"Petráš / Neštický",S3:"Michalovič / Patúc",S4:"Pavlinský / Jarošík (CZE)",S5:"Gréč / Žák",S6:"Janto / Žiaček",S7:"Naňo / Regina",S8:"Ondrušek / Matušovský",S9:"Purdeš / Zavacký",S10:"Brilla L. / Velička",S11:"Šebök / Blažo",S12:"Holienka / Kúdelčík",S13:"Nataniel - Hajzuš / Červenák L.",S14:"Sekera / Sekera ml.",S15:"Mazák / Križák",S16:"S16"};
+let M={
+1:{A:"S1",B:BYE},2:{A:"S9",B:"S8"},3:{A:"S5",B:"S12"},4:{A:"S13",B:"S4"},5:{A:"S3",B:"S14"},6:{A:"S11",B:"S6"},7:{A:"S7",B:"S10"},8:{A:"S15",B:"S2"},
+9:{A:{W:1},B:{W:2}},10:{A:{W:3},B:{W:4}},11:{A:{W:5},B:{W:6}},12:{A:{W:7},B:{W:8}},
+13:{A:BYE,B:{L:2}},14:{A:{L:3},B:{L:4}},15:{A:{L:5},B:{L:6}},16:{A:{L:7},B:{L:8}},
+17:{A:{W:13},B:{L:12}},18:{A:{W:14},B:{L:11}},19:{A:{W:15},B:{L:10}},20:{A:{W:16},B:{L:9}},
+21:{A:{W:9},B:{W:10}},22:{A:{W:11},B:{W:12}},23:{A:{W:17},B:{W:18}},24:{A:{W:19},B:{W:20}},
+25:{A:{W:24},B:{L:22}},26:{A:{W:23},B:{L:21}},27:{A:{W:21},B:{W:25}},28:{A:{W:22},B:{W:26}},29:{A:{L:27},B:{L:28}},30:{A:{W:27},B:{W:28}}
 };
-/* moja dvojica — premenná, voliteľná v UI, ukladaná do localStorage */
-let MY_SEED = (function(){
- try{const v=localStorage.getItem("pavuk_my_seed"); if(v && /^S\d{1,2}$/.test(v)) return v;}catch(e){}
- return "S6"; // default Povrazník / Pokopec
-})();
-
-/* ===== BRACKET (overené proti rozpisu, 30 zápasov) =====
- slot = "S#" | {W:id} | {L:id} */
-const M={
- 1:{A:"S1",B:"S16"},2:{A:"S9",B:"S8"},3:{A:"S5",B:"S12"},4:{A:"S13",B:"S4"},
- 5:{A:"S3",B:"S14"},6:{A:"S11",B:"S6"},7:{A:"S7",B:"S10"},8:{A:"S15",B:"S2"},
- 9:{A:{W:1},B:{W:2}},10:{A:{W:3},B:{W:4}},11:{A:{W:5},B:{W:6}},12:{A:{W:7},B:{W:8}},
- 13:{A:{L:1},B:{L:2}},14:{A:{L:3},B:{L:4}},15:{A:{L:5},B:{L:6}},16:{A:{L:7},B:{L:8}},
- 17:{A:{W:13},B:{L:12}},18:{A:{W:14},B:{L:11}},19:{A:{W:15},B:{L:10}},20:{A:{W:16},B:{L:9}},
- 21:{A:{W:9},B:{W:10}},22:{A:{W:11},B:{W:12}},
- 23:{A:{W:17},B:{W:18}},24:{A:{W:19},B:{W:20}},
- 25:{A:{W:24},B:{L:22}},26:{A:{W:23},B:{L:21}},
- 27:{A:{W:21},B:{W:25}},28:{A:{W:22},B:{W:26}},
- 29:{A:{L:27},B:{L:28}},30:{A:{W:27},B:{W:28}}
-};
-/* round grouping for display */
-/* ===== COLUMN LAYOUT (horizontálne, zľava doprava) =====
- Dve dráhy ako na oficiálnom rozpise: Hlavný pavúk (winners) a Baziny (losers). */
 const TRACKS=[
- { title:"Hlavný pavúk", cols:[
- {name:"1. kolo", ids:[1,2,3,4,5,6,7,8]},
- {name:"2. kolo", ids:[9,10,11,12]},
- {name:"3. kolo", ids:[21,22]},
- ]},
- { title:"Baziny (losers)", cols:[
- {name:"Prehra 13–16", ids:[13,14,15,16]},
- {name:"Prehra 9–12", ids:[17,18,19,20]},
- {name:"Prehra 7–8", ids:[23,24]},
- {name:"Prehra 5–6", ids:[25,26]},
- ]},
- { title:"Záver", cols:[
- {name:"Semifinále", ids:[27,28]},
- {name:"O 3. miesto", ids:[29]},
- {name:"Finále", ids:[30]},
- ]},
+{title:"Hlavný pavúk",cols:[{name:"1. kolo",ids:[1,2,3,4,5,6,7,8]},{name:"2. kolo",ids:[9,10,11,12]},{name:"3. kolo",ids:[21,22]}]},
+{title:"Baziny (losers)",cols:[{name:"Prehra 13–16",ids:[16,15,14,13]},{name:"Prehra 9–12",ids:[20,19,18,17]},{name:"Prehra 7–8",ids:[24,23]},{name:"Prehra 5–6",ids:[25,26]}]},
+{title:"Záver",cols:[{name:"Semifinále",ids:[27,28]},{name:"O 3. miesto",ids:[29]},{name:"Finále",ids:[30]}]}
 ];
-/* real result (winner seed) – PDF Skalica A, 6.–7.6.2026 */
-const REAL={1:"S1",2:"S8",3:"S5",4:"S4",5:"S3",6:"S11",7:"S7",8:"S2",9:"S1",10:"S4",
- 11:"S11",12:"S7",13:"S16",14:"S12",15:"S6",16:"S2",17:"S16",18:"S12",19:"S5",20:"S2",
- 21:"S1",22:"S11",23:"S12",24:"S5",25:"S5",26:"S4",27:"S1",28:"S11",29:"S4",30:"S1"};
+let WIN={};
+let MY_SEED=(()=>{try{return localStorage.getItem("pavuk_my_seed")||"S1"}catch{return "S1"}})();
+const $=id=>document.getElementById(id), label=s=>s===BYE?"BYE":(TEAMS[s]||s||"—");
 
-/* ===== STATE ===== */
-let WIN={}; // id -> winner seed | undefined
-let curView="bracket";
-
-/* ===== CORE HELPERS (per spec) ===== */
-const winner = id => WIN[id] || null;
-
-function resolveSlot(s){
- if(typeof s==="string") return s; // seed
- if(s.W) return winner(s.W); // víťaz zápasu
- if(s.L){ // porazený zápasu
- const w=winner(s.L); if(!w) return null;
- const r=resolvedMatch(s.L); if(!r) return null;
- return r.a===w ? r.b : r.a;
+function resolveSlot(slot,seen=new Set()){
+ if(typeof slot==="string") return slot;
+ const ref=slot&&(+slot.W||+slot.L); if(!ref) return null;
+ const st=matchState(ref,seen); return slot.W?st.w:st.l;
+}
+function matchState(id,seen=new Set()){
+ if(!M[id]||seen.has(id)) return {a:null,b:null,w:null,l:null,auto:false};
+ const next=new Set(seen); next.add(id);
+ const a=resolveSlot(M[id].A,next),b=resolveSlot(M[id].B,next);
+ let w=null,auto=false;
+ if(a&&b){
+  if(a===BYE&&b!==BYE){w=b;auto=true}
+  else if(b===BYE&&a!==BYE){w=a;auto=true}
+  else if(WIN[id]===a||WIN[id]===b) w=WIN[id];
  }
- return null;
+ return {a,b,w,l:w?(a===w?b:a):null,auto};
 }
-function resolvedMatch(id){
- const m=M[id];
- const a=resolveSlot(m.A), b=resolveSlot(m.B);
- if(!a||!b) return null;
- return {a,b};
-}
-function loser(id){
- const w=winner(id); if(!w) return null;
- const r=resolvedMatch(id); if(!r) return null;
- return r.a===w ? r.b : r.a;
-}
-function resolvedOpponent(id,team){
- const r=resolvedMatch(id); if(!r) return null;
- if(r.a===team) return r.b;
- if(r.b===team) return r.a;
- return null;
-}
+function prune(){let changed=true;while(changed){changed=false;for(const k of Object.keys(WIN)){const id=+k,st=matchState(id);if(!st.a||!st.b||st.a===BYE||st.b===BYE||(WIN[id]!==st.a&&WIN[id]!==st.b)){delete WIN[id];changed=true}}}}
+function setWinner(id,seed){const st=matchState(id);if(!seed||seed===BYE||st.auto||!(seed===st.a||seed===st.b))return;if(WIN[id]===seed)delete WIN[id];else WIN[id]=seed;prune();render()}
+function targetPath(){const out=[];for(let id=1;id<=30;id++){const st=matchState(id);if(st.a===MY_SEED||st.b===MY_SEED)out.push(id)}return out}
+function activeSeeds(){const s=new Set();for(const m of Object.values(M))for(const x of [m.A,m.B])if(typeof x==="string"&&/^S\d+$/.test(x))s.add(x);return [...s].sort((a,b)=>+a.slice(1)-+b.slice(1))}
+function sourceHint(slot){if(typeof slot==="string")return slot===BYE?"voľný žreb":label(slot);if(slot.W)return `víťaz Z${slot.W}`;if(slot.L)return `porazený Z${slot.L}`;return "čaká sa"}
+function slotButton(id,which,st){const slot=M[id][which],seed=which==="A"?st.a:st.b,b=document.createElement("button");b.className="slot";if(!seed){b.classList.add("tbd");b.disabled=true;b.innerHTML=`<span class="seed">—</span><span class="name">${sourceHint(slot)}</span>`;return b}b.innerHTML=`<span class="seed">${seed===BYE?"—":seed}</span><span class="name">${label(seed)}</span><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>`;if(seed===MY_SEED)b.classList.add("target");if(st.w===seed)b.classList.add("win");else if(st.w)b.classList.add("lose");if(seed===BYE||st.auto)b.disabled=true;else b.onclick=()=>setWinner(id,seed);return b}
+function matchEl(id,path){const st=matchState(id),d=document.createElement("div");d.className="match"+(path.has(id)?" path":"");d.innerHTML=`<span class="mid">Z${id}</span>${st.auto?'<span class="auto">AUTO</span>':''}`;d.append(slotButton(id,"A",st),slotButton(id,"B",st));return d}
+function render(){const path=new Set(targetPath()),v=$("view");v.innerHTML="";for(const tr of TRACKS){const t=document.createElement("section");t.className="track";t.innerHTML=`<div class="track-title">${tr.title}</div>`;const sc=document.createElement("div");sc.className="track-scroll";tr.cols.forEach((col,i)=>{const c=document.createElement("div");c.className="col"+(i?" stagger":"");c.innerHTML=`<div class="col-head">${col.name}</div>`;const stack=document.createElement("div");stack.className="col-stack";col.ids.forEach(id=>stack.append(matchEl(id,path)));c.append(stack);sc.append(c)});t.append(sc);v.append(t)}buildSelect()}
+function buildSelect(){const sel=$("teamSel"),seeds=activeSeeds();if(!seeds.includes(MY_SEED))MY_SEED=seeds[0]||"S1";sel.innerHTML="";for(const s of seeds){const o=document.createElement("option");o.value=s;o.textContent=`${s} — ${label(s)}`;o.selected=s===MY_SEED;sel.append(o)}sel.onchange=()=>{MY_SEED=sel.value;try{localStorage.setItem("pavuk_my_seed",MY_SEED)}catch{}updateTitle();render()};updateTitle()}
+function updateTitle(){$("myName").textContent=label(MY_SEED);$("mySeed").textContent=`(${MY_SEED})`}
+function branchText(){const ids=targetPath(),out=[`Vetva — ${label(MY_SEED)} (${MY_SEED})`,""];for(const id of ids){const st=matchState(id),opp=st.a===MY_SEED?st.b:st.a,tag=st.w?(st.w===MY_SEED?"[výhra]":"[prehra]"):"[hrá]";out.push(`${tag} Z${id}: proti ${opp?label(opp):"zatiaľ neurčenému súperovi"}`)}const losses=ids.filter(id=>{const w=matchState(id).w;return w&&w!==MY_SEED});if(matchState(30).w===MY_SEED)out.push("","→ VÍŤAZ TURNAJA 🏆");else if(losses.length>=2)out.push("","→ VYRADENÝ PO 2. PREHRE");return out.join("\n")}
 
-/* describe a slot source for level-1/2 display:
- returns { kind, srcId, label } where kind = 'seed'|'W'|'L' */
-function slotSource(slot){
- if(typeof slot==="string") return {kind:"seed",seed:slot};
- if(slot.W) return {kind:"W",srcId:slot.W};
- if(slot.L) return {kind:"L",srcId:slot.L};
- return null;
-}
+function parseSlotText(value){const s=String(value??"").replace(/\s+/g," ").trim();if(!s)return null;if(/^BYE$/i.test(s)||/voľn[ýy]\s+žreb/i.test(s))return BYE;let m=s.match(/^W\s*(\d{1,2})$/i);if(m)return{W:+m[1]};m=s.match(/^L\s*(\d{1,2})$/i);if(m)return{L:+m[1]};m=s.match(/\(S(1[0-6]|[1-9])\)/i)||s.match(/^S(1[0-6]|[1-9])$/i);if(m)return"S"+(m[1]||m[0].replace(/\D/g,""));return null}
+function teamFromText(value){const s=String(value??"").replace(/\s+/g," ").trim(),m=s.match(/\(S(1[0-6]|[1-9])\)/i);if(!m)return null;const seed="S"+m[1],name=s.replace(/\s*\(S\d+\)\s*$/i,"").trim();return name?{seed,name}:null}
+function scoreSide(value){const m=String(value??"").match(/\b([0-2])\s*:\s*([0-2])\b/);if(!m||m[1]===m[2])return null;return +m[1]>+m[2]?"A":"B"}
+function validateModel(model){for(let id=1;id<=30;id++){const m=model[id];if(!m||!m.A||!m.B)return false;for(const s of [m.A,m.B])if(typeof s==="object"){const r=+(s.W||s.L);if(!r||r>=id)return false}}return true}
+function applyParsed(res){if(res.model&&validateModel(res.model))M=res.model;WIN={};for(const t of res.teams||[])if(t.name&&t.seed)TEAMS[t.seed]=t.name;for(const r of (res.rows||[]).sort((a,b)=>a.num-b.num)){if(!r.winnerSide)continue;const st=matchState(r.num),w=r.winnerSide==="A"?st.a:st.b;if(w&&w!==BYE)WIN[r.num]=w}prune();buildSelect();render()}
+function parseExcelDraw(ws){const grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""}),rows=[],model={},teams=[];let hdr=-1,numCol=0,aCol=5,bCol=7,resCol=8;for(let i=0;i<grid.length;i++){const r=grid[i].map(x=>String(x).trim());if(r.some(x=>/^Tím\s*1$/i.test(x))&&r.some(x=>/^Tím\s*2$/i.test(x))){hdr=i;numCol=r.findIndex(x=>/^Č\.?$/i.test(x));aCol=r.findIndex(x=>/^Tím\s*1$/i.test(x));bCol=r.findIndex(x=>/^Tím\s*2$/i.test(x));resCol=r.findIndex(x=>/^Výsledok$/i.test(x));break}}if(hdr<0)hdr=4;for(let i=hdr+1;i<grid.length;i++){const r=grid[i],num=+r[numCol];if(num<1||num>30)continue;const A=parseSlotText(r[aCol]),B=parseSlotText(r[bCol]);if(A&&B)model[num]={A,B};const ta=teamFromText(r[aCol]),tb=teamFromText(r[bCol]);if(ta)teams.push(ta);if(tb)teams.push(tb);rows.push({num,winnerSide:scoreSide(r[resCol])})}return{rows,model:Object.keys(model).length===30?model:null,teams}}
+function parseSeeding(ws){const grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""}),teams=[];for(const row of grid){let si=-1,seed=null;for(let i=row.length-1;i>=0;i--){const m=String(row[i]).trim().match(/^S(1[0-6]|[1-9])$/i);if(m){si=i;seed="S"+m[1];break}}if(si<0)continue;let found=null;for(let i=si-1;i>=0;i--){const c=String(row[i]).replace(/\s+/g," ").trim();if(!c)continue;const m=c.match(/\(S(1[0-6]|[1-9])\)\s*$/i);if(m&&"S"+m[1]===seed){const name=c.replace(/\s*\(S\d+\)\s*$/i,"").trim();if(name)found={seed,name};break}}if(found)teams.push(found)}return teams}
+function parsePdfText(text){const rows=[],model={},teams=[];for(const line of text.split(/\n+/)){const h=line.match(/^\s*(\d{1,2})\b/);if(!h||!/(?<!\w)vs(?!\w)/i.test(line))continue;const num=+h[1];if(num<1||num>30)continue;const p=line.split(/\s+vs\s+/i),A=parseSlotText(p[0]),B=parseSlotText(p[1]);if(A&&B)model[num]={A,B};const ta=teamFromText(p[0]),tb=teamFromText(p[1]);if(ta)teams.push(ta);if(tb)teams.push(tb);rows.push({num,winnerSide:scoreSide(p[1])})}return{rows,model:Object.keys(model).length===30?model:null,teams}}
 
-/* For a source match, describe its two competitors as far as known.
- Used for level-1 "víťaz X alebo Y". */
-function describeSourceMatch(id){
- const m=M[id];
- const a=resolveSlot(m.A), b=resolveSlot(m.B);
- return {a,b}; // either may be null
-}
-
-/* ===== S12 PATH =====
- Pozbiera každý zápas, kde S12 figuruje (rozbalený slot alebo známy feeder).
- V double-elim S12 po prehre pokračuje cez losers vetvu, takže nezastavujeme
- na prvej prehre — zoznam rastie tak, ako sa odhaľujú ďalšie zápasy. */
-function targetPath(){
- const path=[];
- for(let id=1;id<=30;id++){
- const m=M[id];
- const r=resolvedMatch(id);
- let involves = r && (r.a===MY_SEED||r.b===MY_SEED);
- if(!involves){
- const sa=resolveSlot(m.A), sb=resolveSlot(m.B);
- involves = sa===MY_SEED || sb===MY_SEED;
- }
- if(involves) path.push(id);
- }
- return path;
-}
-
-/* the *pending* next match for MY_SEED = first path match without a winner */
-function pendingMatchId(){
- for(const id of targetPath()) if(!winner(id)) return id;
- return null;
-}
-
-/* ===== ACTIONS ===== */
-function setWinner(id,seed){
- if(WIN[id]===seed) delete WIN[id]; else WIN[id]=seed;
- pruneStale();
- render();
-}
-function pruneStale(){
- let changed=true;
- while(changed){
- changed=false;
- for(let id=1;id<=30;id++){
- if(!WIN[id]) continue;
- // víťaza zmaž LEN ak oba sloty sú už známe a nastavený víťaz nie je ani jeden z nich
- // (TBD slot necháme — používateľ smie predklikať víťaza skôr, než dorazí súper)
- const a=resolveSlot(M[id].A), b=resolveSlot(M[id].B);
- if(a!==null && b!==null && WIN[id]!==a && WIN[id]!==b){ delete WIN[id]; changed=true; }
- }
- }
-}
-
-/* ===== RENDER ===== */
-const elView=document.getElementById("view");
-const lbl = s => s ? (TEAMS[s]||s) : null;
-
-function render(){
- renderBracket();
-}
-
-/* ---- view: full bracket (horizontálne stĺpce, zľava doprava) ---- */
-function renderBracket(){
- elView.innerHTML="";
- const path=new Set(targetPath());
- TRACKS.forEach(track=>{
- const tEl=document.createElement("div");tEl.className="track";
- tEl.innerHTML=`<div class="track-title">${track.title}</div>`;
- const scroll=document.createElement("div");scroll.className="track-scroll";
- track.cols.forEach((col,ci)=>{
- const c=document.createElement("div");c.className="col";
- // od 2. stĺpca pridaj vertikálne medzery, aby zápasy sedeli medzi zdrojmi
- if(ci>0) c.classList.add("col-staggered");
- c.innerHTML=`<div class="col-head">${col.name}</div>`;
- const stack=document.createElement("div");stack.className="col-stack";
- col.ids.forEach(id=>stack.appendChild(matchEl(id,path.has(id))));
- c.appendChild(stack);
- scroll.appendChild(c);
- });
- tEl.appendChild(scroll);
- elView.appendChild(tEl);
- });
-}
-function slotBtn(id,which){
- const slot=M[id][which];
- const seed=resolveSlot(slot);
- const b=document.createElement("button");b.className="slot";
- if(seed===null){
- b.classList.add("tbd");b.disabled=true;
- const src=slotSource(slot);
- const hint = src.kind==="W"?`víťaz Z${src.srcId}`:src.kind==="L"?`porazený Z${src.srcId}`:"čaká sa";
- b.innerHTML=`<span class="seed">—</span><span class="name">${hint}</span>`;
- return b;
- }
- b.innerHTML=`<span class="seed">${seed}</span><span class="name">${lbl(seed)}</span>`+
- `<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>`;
- if(seed===MY_SEED)b.classList.add("is-tgt");
- if(WIN[id]===seed)b.classList.add("win");
- else if(WIN[id])b.classList.add("lose");
- b.onclick=()=>setWinner(id,seed);
- return b;
-}
-function matchEl(id,onPath){
- const d=document.createElement("div");d.className="match"+(onPath?" on-path":"");
- d.innerHTML=`<span class="mid">Z${id}</span>`;
- d.appendChild(slotBtn(id,"A"));d.appendChild(slotBtn(id,"B"));
- return d;
-}
-
-/* ---- view: S12 branch (the heart of the app) ---- */
-function renderPath(){
- const path=targetPath();
- const wrap=document.createElement("div");wrap.className="out";
- wrap.innerHTML=`<h2><span class="dot"></span>Vetva pre Povrazník / Madej</h2>`+
- `<p class="sub">Proti komu hráš a z ktorého zápasu súper príde. Klik vo „Celý pavúk" vetvu zúži.</p>`;
-
- if(path.length===0){
- wrap.innerHTML+=`<div class="step"><div class="body lead">Začni klikať víťazov v záložke „Celý pavúk".</div></div>`;
- elView.innerHTML="";elView.appendChild(wrap);return;
- }
-
- const pending=pendingMatchId();
- path.forEach(id=>{
- wrap.appendChild(stepEl(id,id===pending));
- });
-
- // verdict — S12 je v double-elim vyradený až po druhej prehre
- const losses = path.filter(id=>{const w=winner(id);return w&&w!==MY_SEED;});
- const last=path[path.length-1];
- const lastW=winner(last);
- if(lastW===MY_SEED && last===30){
- wrap.appendChild(div(`verdict win`,`🏆 ${lbl(MY_SEED)} — víťaz turnaja`));
- }else if(losses.length>=2){
- const elimId=losses[losses.length-1];
- wrap.appendChild(div(`verdict out`,`Koniec — ${lbl(MY_SEED)} vyradený (2. prehra, proti ${lbl(resolvedOpponent(elimId,MY_SEED))})`));
- }else if(losses.length===1 && path.every(id=>winner(id))){
- // jedna prehra, všetko doklikané a žiadny ďalší zápas sa neodhalil → čaká na rozpis vyššie
- wrap.appendChild(div(`verdict out`,`${lbl(MY_SEED)} je v losers vetve (1 prehra) — doklikaj zdrojové zápasy pre ďalšieho súpera`));
- }
- elView.innerHTML="";elView.appendChild(wrap);
-}
-
-function div(cls,html){const d=document.createElement("div");d.className=cls;d.innerHTML=html;return d;}
-
-/* one step in S12 branch with 3-level opponent resolution */
-function stepEl(id,isCurrent){
- const s=document.createElement("div");s.className="step"+(isCurrent?" cur":"");
- const w=winner(id);
- const result = w===MY_SEED ? "w" : w ? "l" : "q";
- const tagTxt = w===MY_SEED ? "výhra" : w ? "prehra" : "hráš";
- s.innerHTML=`<div class="hd"><span class="tag ${result}">${tagTxt}</span></div>`;
- const body=document.createElement("div");body.className="body";
-
- // figure out which slot is the opponent (the non-target slot)
- const m=M[id];
- const aSeed=resolveSlot(m.A), bSeed=resolveSlot(m.B);
- const tgtIsA = aSeed===MY_SEED;
- const oppSlot = tgtIsA ? m.B : m.A;
- const oppSeed = tgtIsA ? bSeed : aSeed;
-
- if(oppSeed){
- // LEVEL 3 — exact opponent known
- body.innerHTML=`<span class="lead">hráš proti:</span>`+
- `<div class="vs-row"><span class="opp-final"><span class="s">${oppSeed}</span> ${lbl(oppSeed)}</span></div>`;
- if(w) body.innerHTML+=`<div class="lead" style="margin-top:6px">výsledok: `+
- (w===MY_SEED?`<b style="color:var(--win)">výhra ${lbl(MY_SEED)}</b>`:`<b style="color:var(--accent)">vyhral ${lbl(oppSeed)}</b>`)+`</div>`;
- }else{
- // opponent comes from a source match → level 1 or 2
- const src=slotSource(oppSlot); // {kind:'W'|'L', srcId}
- const sm=describeSourceMatch(src.srcId);
- const kindWord = src.kind==="W" ? "víťaza" : "prehre";
- const fromWord = src.kind==="W" ? "víťaz" : "porazený";
-
- if(sm.a && sm.b){
- // LEVEL 2 — both competitors of source match known, result not yet
- body.innerHTML=`<span class="lead">hráš proti ${kindWord} zo zápasu:</span>`+
- `<div class="vs-row">`+
- `<span class="opt"><span class="s">${sm.a}</span> ${lbl(sm.a)}</span>`+
- `<div class="vs">vs</div>`+
- `<span class="opt"><span class="s">${sm.b}</span> ${lbl(sm.b)}</span>`+
- `</div>`;
- }else{
- // LEVEL 1 — source match competitors not fully known: show feeders broadly
- const fa=feederDesc(M[src.srcId].A);
- const fb=feederDesc(M[src.srcId].B);
- body.innerHTML=`<span class="lead">hráš proti ${kindWord} zo zápasu medzi:</span>`+
- `<div class="vs-row">`+
- `<div class="opt">A) ${fa}</div>`+
- `<div class="vs">vs</div>`+
- `<div class="opt">B) ${fb}</div>`+
- `</div>`;
- }
- }
- s.appendChild(body);
- return s;
-}
-
-/* describe a feeder slot for level-1 (e.g. "víťaz: Šíma/Lukáč (S3) alebo Sýkora/Korec (S14)") */
-function feederDesc(slot){
- const seed=resolveSlot(slot);
- if(seed) return `<span class="s">${seed}</span> ${lbl(seed)}`;
- const src=slotSource(slot);
- if(!src) return "TBD";
- const sm=describeSourceMatch(src.srcId);
- const word = src.kind==="W"?"víťaz":"porazený";
- const a = sm.a ? `<span class="s">${sm.a}</span> ${lbl(sm.a)}` : "TBD";
- const b = sm.b ? `<span class="s">${sm.b}</span> ${lbl(sm.b)}` : "TBD";
- return `<span class="alt">${word}:</span> ${a} <span class="alt">alebo</span> ${b}`;
-}
-
-/* ---- view: raw copyable text ---- */
-function buildText(){
- const path=targetPath();
- if(!path.length) return "Žiadne kliky.";
- const out=[`Vetva — ${lbl(MY_SEED)} (${MY_SEED})`,""];
- path.forEach(id=>{
- const m=M[id];
- const aSeed=resolveSlot(m.A), bSeed=resolveSlot(m.B);
- const tgtIsA=aSeed===MY_SEED;
- const oppSlot=tgtIsA?m.B:m.A; const oppSeed=tgtIsA?bSeed:aSeed;
- const w=winner(id);
- const tag = w===MY_SEED?"[výhra]":w?"[prehra]":"[hráš]";
- if(oppSeed){
- out.push(`${tag} proti: ${oppSeed} ${lbl(oppSeed)}`);
- }else{
- const src=slotSource(oppSlot);
- const sm=describeSourceMatch(src.srcId);
- const kw = src.kind==="W"?"víťazovi":"prehre";
- if(sm.a&&sm.b){
- out.push(`${tag} proti ${kw} zo zápasu: ${sm.a} ${lbl(sm.a)} vs ${sm.b} ${lbl(sm.b)}`);
- }else{
- out.push(`${tag} proti ${kw} zo zápasu medzi vetvami (zatiaľ neurčené)`);
- }
- }
- });
- const losses=path.filter(id=>{const w=winner(id);return w&&w!==MY_SEED;});
- const last=path[path.length-1],lw=winner(last);
- if(lw===MY_SEED&&last===30) out.push("","→ VÍŤAZ TURNAJA 🏆");
- else if(losses.length>=2){const e=losses[losses.length-1];out.push("",`→ ${lbl(MY_SEED)} vyradený – 2. prehra (proti ${lbl(resolvedOpponent(e,MY_SEED))})`);}
- return out.join("\n");
-}
-function renderRaw(){
- const pre=document.createElement("pre");pre.className="raw";pre.textContent=buildText();
- elView.innerHTML="";elView.appendChild(pre);
-}
-
-/* ===== BUTTONS ===== */
-document.getElementById("copy").onclick=async()=>{
- const t=buildText();
- try{await navigator.clipboard.writeText(t);}catch{
- const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
- const b=document.getElementById("copy"),o=b.textContent;
- b.textContent="Skopírované ✓";b.classList.add("ok");
- setTimeout(()=>{b.textContent=o;b.classList.remove("ok");},1300);
-};
-document.getElementById("reset").onclick=()=>{WIN={};render();};
-document.getElementById("default").onclick=()=>{ if(typeof REAL!=="undefined"&&REAL){WIN={...REAL};render();} };
-
-/* ===== UPLOAD & PARSING (PDF + Excel) ===== */
-const uMsg=document.getElementById("uploadMsg");
-function showMsg(txt,cls){uMsg.textContent=txt;uMsg.className="upload-msg "+(cls||"");}
-
-document.getElementById("uploadBtn").onclick=()=>document.getElementById("pdfInput").click();
-document.getElementById("pdfInput").onchange=async(e)=>{
- const file=e.target.files[0]; if(!file) return;
- const name=(file.name||"").toLowerCase();
- const isXlsx = name.endsWith(".xlsx") || /spreadsheet/.test(file.type||"");
- try{
- if(isXlsx){
- await handleExcel(file);
- }else{
- await handlePdf(file);
- }
- }catch(err){
- console.error(err);
- showMsg("Chyba pri čítaní súboru: "+err.message,"err");
- }finally{ e.target.value=""; }
-};
-
-async function handlePdf(file){
- const lib = window.pdfjsLib || window["pdfjs-dist/build/pdf"];
- if(!lib){ showMsg("Knižnica na čítanie PDF sa nenačítala (skontroluj internet a skús znova).","err"); return; }
- if(lib.GlobalWorkerOptions && !lib.GlobalWorkerOptions.workerSrc){
- lib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
- }
- showMsg("Načítavam PDF…","");
- const buf=await file.arrayBuffer();
- const pdf=await lib.getDocument({data:buf}).promise;
- let text="";
- for(let p=1;p<=pdf.numPages;p++){
- const page=await pdf.getPage(p);
- const tc=await page.getTextContent();
- // reconstruct lines by y-position with tolerance clustering (TOL px)
- const TOL=3.5;
- const items=tc.items.map(it=>({x:it.transform[4],y:it.transform[5],s:it.str}))
- .sort((a,b)=>b.y-a.y || a.x-b.x);
- const lines=[];
- items.forEach(it=>{
- let line=lines.find(L=>Math.abs(L.y-it.y)<=TOL);
- if(!line){line={y:it.y,parts:[]};lines.push(line);}
- line.parts.push(it);
- });
- lines.forEach(L=>{
- text+=L.parts.sort((a,b)=>a.x-b.x).map(p=>p.s).join(" ")+"\n";
- });
- }
- const res=parseDraw(text);
- if(res.rows.length===0){showMsg("V PDF som nenašiel tabuľku zápasov. Skontroluj, či je to správny rozpis.","err");return;}
- applyParsed(res);
- const filled=Object.keys(WIN).length;
- showMsg(`PDF: načítaných ${res.rows.length} zápasov, ${filled} s výsledkom. Mená dvojíc aktualizované.`,"ok");
- buildTeamSelect(); render();
-}
-
-async function handleExcel(file){
- if(!window.XLSX){ showMsg("Knižnica na čítanie Excelu sa nenačítala (skontroluj internet a skús znova).","err"); return; }
- showMsg("Načítavam Excel…","");
- const buf=await file.arrayBuffer();
- const wb=XLSX.read(buf,{type:"array"});
- // 1) seeding z hárku s "Nasadenie" v názve (mapovanie S# → mená, MUŽI stĺpce)
- const seedSheet=wb.SheetNames.find(n=>/nasaden|seeding/i.test(n));
- let seedCount=0;
- if(seedSheet){
- seedCount=parseSeedingSheet(wb.Sheets[seedSheet]);
- }
- // 2) rozpis/výsledky z hárku s "Main Draw"/"Draw"/"Zápas" (ak je) – inak len seeding
- let drawCount=0, filled=0;
- const drawSheet=wb.SheetNames.find(n=>/main\s*draw|draw|zápas|rozpis/i.test(n));
- if(drawSheet){
- const grid=XLSX.utils.sheet_to_json(wb.Sheets[drawSheet],{header:1,raw:false,defval:""});
- const text=grid.map(row=>row.join(" ")).join("\n");
- const res=parseDraw(text);
- drawCount=res.rows.length;
- if(drawCount>0){ applyParsed(res, /*keepNames*/ seedCount>0); filled=Object.keys(WIN).length; }
- }
- if(seedCount===0 && drawCount===0){
- showMsg("V Exceli som nenašiel ani nasadenie, ani rozpis zápasov.","err"); return;
- }
- const bits=[];
- if(seedCount) bits.push(`nasadenie ${seedCount} dvojíc`);
- if(drawCount) bits.push(`${drawCount} zápasov (${filled} s výsledkom)`);
- showMsg("Excel: "+bits.join(", ")+".","ok");
- buildTeamSelect(); render();
-}
-
-/* seeding hárok: nájdi MUŽI blok. Hárok má vedľa seba ŽENY (vľavo) aj MUŽI (vpravo);
-   seed "S#" je v MUŽI bloku úplne vpravo. Mená berieme z okna v MUŽI bloku TESNE PRED
-   seedom — ohraničené začiatkom MUŽI bloku (mužské poradové číslo / Q#), aby sme
-   nechytili ženský blok vľavo. Kvalifikanti (Q1–Q4) nemajú meno → ponecháme placeholder. */
-function parseSeedingSheet(ws){
- const grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""});
- // 1) zisti, kde začína MUŽI blok (stĺpec mužského "#"): nájdi riadok hlavičky
- //    s dvoma "#"/"Hráč" a vezmi index toho druhého (pravého).
- let menStart=-1;
- for(const row of grid){
- const c=row.map(x=>String(x).trim());
- const hdrIdx=[]; c.forEach((v,i)=>{ if(/^#$/.test(v)||/^Hráč\b/i.test(v)) hdrIdx.push(i); });
- if(hdrIdx.length>=2){ menStart=hdrIdx[hdrIdx.length-1]; break; }
- }
- if(menStart<0) menStart=9; // fallback: MUŽI blok zvyčajne od stĺpca J/K
- let n=0;
- for(const row of grid){
- const cells=row.map(c=>String(c).trim());
- // posledný seed S1..S16 v riadku (MUŽI blok je vpravo)
- let sIdx=-1;
- for(let i=cells.length-1;i>=0;i--){ if(/^S(1[0-6]|[1-9])$/.test(cells[i])){sIdx=i;break;} }
- if(sIdx<0 || sIdx<menStart) continue; // seed musí byť v MUŽI bloku
- const seed=cells[sIdx];
- // začiatok MUŽI riadku = poradové číslo (1..16) ALEBO Q1..Q4 napravo od menStart, naľavo od seedu
- let numIdx=-1, isQual=false;
- for(let i=sIdx-1;i>=menStart;i--){
- if(/^(1[0-6]|[1-9])$/.test(cells[i])){ numIdx=i; break; }
- if(/^Q\d$/i.test(cells[i])){ numIdx=i; isQual=true; break; }
- }
- if(numIdx<0) continue;
- if(isQual) continue; // kvalifikant bez mena → ponechaj placeholder "S13" atď.
- // mená = textové (nečíselné) bunky medzi numIdx a sIdx, v rámci MUŽI bloku
- const names=[];
- for(let i=numIdx+1;i<sIdx;i++){
- const c=cells[i];
- if(c && !/^[\d.,\s]+$/.test(c) && !/^Q\d$/i.test(c) && c.length>1) names.push(c);
- }
- if(names.length>=2){ TEAMS[seed]=names[0]+" / "+names[1]; n++; }
- else if(names.length===1){ TEAMS[seed]=names[0]; n++; }
- }
- return n;
-}
-
-/* parse the results table out of plain text (universal: starý + nový Prešov formát) */
-function parseDraw(text){
- const lines=text.split("\n");
- const rows=[]; // {num,sA,sB,winner,nameA,nameB}
- for(const ln of lines){
- // riadok zápasu: začína číslom 1–30, obsahuje "vs" a aspoň dva seedy (S#)
- const head=ln.match(/^\s*(\d{1,2})\b/);
- if(!head) continue;
- const num=+head[1]; if(num<1||num>30) continue;
- if(!/\bvs\b/i.test(ln)) continue;
- const seeds=[...ln.matchAll(/\(S(\d+)\)/g)].map(x=>+x[1]);
- if(seeds.length<2) continue;
- const parts=ln.split(/\s+vs\s+/i);
- const nameA=extractName(parts[0],true);
- const nameB=extractName(parts[1]||"",false);
- // výsledok: prvé "X:Y" po druhom seede (setové skóre 0/1/2)
- const afterB=(parts[1]||"");
- const rm=afterB.match(/\(S\d+\)\s*(\d):(\d)\b/);
- let winner=null;
- if(rm){const a=+rm[1],b=+rm[2]; if(a!==b && a<=2 && b<=2) winner = a>b ? seeds[0] : seeds[1];}
- rows.push({num,sA:seeds[0],sB:seeds[1],winner,nameA,nameB});
- }
- return {rows};
-}
-/* meno dvojice = text pred (S#), bez výsledku, rozhodcu a hlavičky riadku.
-   Univerzálne: zvládne starý (Č Kolo Čas Ihr) aj nový Prešov (Č Kolo Dátum Čas Ihr) prefix. */
-function extractName(chunk,isFirstSlot){
- let s=chunk;
- // odrež všetko od prvého setového skóre ďalej (napr. "2:1 13:21 ...")
- s=s.replace(/\s+[0-2]:[0-2]\b.*$/,"");
- // odstráň seed a národnosť
- s=s.replace(/\(S\d+\)/g,"").replace(/\((CZE|PL|SVK|AUT|GER|POL|CZ|SK)\)/gi,"");
- if(isFirstSlot){
- // odsekni úvodný hlavičkový prefix riadku.
- // starý:  "13 I 8:00 3 "      → Č Kolo Čas Ihr
- // Prešov: "6 I 27/6 9:30 1 "  → Č Kolo Dátum Čas Ihr
- // zožerie: číslo, kolo (I/II/III/SF/F/3/4 atď.), voliteľný dátum d/m, čas h:mm, číslo ihriska
- s=s.replace(/^\s*\d{1,2}\s+\S+\s+(?:\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}\s+\d{1,2}\s+/,"");
- // fallback: ak ostalo vodiace "<num> <kolo> ..." bez času (placeholder riadky)
- s=s.replace(/^\s*\d{1,2}\s+\S+\s+/,"");
- }
- return s.replace(/\s+/g," ").trim();
-}
-
-function applyParsed(res, keepNames){
- WIN={};
- // aktualizuj mená podľa seedov (ak nepreukázal seeding hárok presnejšie mená)
- if(!keepNames){
- res.rows.forEach(r=>{
- if(r.nameA && r.nameA.length>1 && !/^S\d+$/.test(r.nameA)) TEAMS["S"+r.sA]=r.nameA;
- if(r.nameB && r.nameB.length>1 && !/^S\d+$/.test(r.nameB)) TEAMS["S"+r.sB]=r.nameB;
- });
- }
- // nastav víťazov len pre náš model M (kontrola, že seedy zápasu sedia)
- res.rows.forEach(r=>{
- if(!r.winner) return;
- if(!M[r.num]) return;
- WIN[r.num]=("S"+r.winner);
- });
- pruneStale();
-}
-
-/* ===== SELECTOR DVOJICE ===== */
-function setMySeed(seed){
- MY_SEED=seed;
- try{localStorage.setItem("pavuk_my_seed",seed);}catch(e){}
- const nm=document.getElementById("myName"); if(nm) nm.textContent=lbl(MY_SEED);
- const tg=document.getElementById("mySeedTag"); if(tg) tg.textContent="("+MY_SEED+")";
-}
-function buildTeamSelect(){
- const sel=document.getElementById("mySel"); if(!sel) return;
- const cur=MY_SEED;
- sel.innerHTML="";
- for(let i=1;i<=16;i++){
- const sd="S"+i;
- const o=document.createElement("option");
- o.value=sd; o.textContent=sd+" — "+lbl(sd);
- if(sd===cur) o.selected=true;
- sel.appendChild(o);
- }
- sel.onchange=()=>{ setMySeed(sel.value); render(); };
- setMySeed(cur);
-}
-
-/* ===== INIT ===== */
-buildTeamSelect();
-WIN={}; // čistý štart — žiadny prednastavený výsledok
-render();
+async function handleExcel(file){if(!window.XLSX)throw Error("Knižnica XLSX sa nenačítala");const wb=XLSX.read(await file.arrayBuffer(),{type:"array"}),drawName=wb.SheetNames.find(n=>/main\s*draw|draw|zápas|rozpis/i.test(n)),seedName=wb.SheetNames.find(n=>/nasaden|seeding/i.test(n));if(!drawName)throw Error("Nenašiel som hárok Main Draw");const res=parseExcelDraw(wb.Sheets[drawName]);if(seedName)res.teams.push(...parseSeeding(wb.Sheets[seedName]));if(!res.model)throw Error("Nenačítalo sa všetkých 30 zápasov");applyParsed(res);showMsg(`Excel načítaný: 30 zápasov, ${new Set(res.teams.map(x=>x.seed)).size} dvojíc. BYE a všetky W/L prepojenia sú aktívne.`,"ok")}
+async function handlePdf(file){const lib=window.pdfjsLib;if(!lib)throw Error("Knižnica PDF sa nenačítala");const pdf=await lib.getDocument({data:await file.arrayBuffer()}).promise;let text="";for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),tc=await page.getTextContent(),items=tc.items.map(x=>({x:x.transform[4],y:x.transform[5],s:x.str})).sort((a,b)=>b.y-a.y||a.x-b.x),lines=[];for(const it of items){let l=lines.find(x=>Math.abs(x.y-it.y)<=3.5);if(!l){l={y:it.y,a:[]};lines.push(l)}l.a.push(it)}for(const l of lines)text+=l.a.sort((a,b)=>a.x-b.x).map(x=>x.s).join(" ")+"\n"}const res=parsePdfText(text);if(!res.model)throw Error("Z PDF sa nepodarilo načítať všetkých 30 prepojení");applyParsed(res);showMsg("PDF načítané: 30 zápasov a presné prepojenia.","ok")}
+function showMsg(t,c=""){$("msg").textContent=t;$("msg").className="msg "+c}
+$("uploadBtn").onclick=()=>$("fileInput").click();$("fileInput").onchange=async e=>{const f=e.target.files[0];if(!f)return;showMsg("Načítavam…");try{if(/\.xlsx$/i.test(f.name)||/spreadsheet/.test(f.type))await handleExcel(f);else await handlePdf(f)}catch(err){console.error(err);showMsg("Chyba: "+err.message,"err")}finally{e.target.value=""}};
+$("resetBtn").onclick=()=>{WIN={};render();showMsg("Výsledky boli vymazané. Prepojenia a mená ostali.","ok")};
+$("copyBtn").onclick=async()=>{const t=branchText();try{await navigator.clipboard.writeText(t)}catch{const x=document.createElement("textarea");x.value=t;document.body.append(x);x.select();document.execCommand("copy");x.remove()}const b=$("copyBtn"),o=b.textContent;b.textContent="Skopírované ✓";b.classList.add("ok");setTimeout(()=>{b.textContent=o;b.classList.remove("ok")},1200)};
+buildSelect();render();
 </script>
 </body>
 </html>
