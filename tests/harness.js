@@ -66,8 +66,9 @@ function makeContext({ localStorageData = {}, files = ["core1.js", "core2.js"] }
   }
   // let/const deklarácie nie sú na globalThis — sprístupni ich accessormi
   vm.runInContext(`
-    globalThis.__get = () => ({ M, WIN, WINCTX, TEAMS, MY_SEED, UNDO });
+    globalThis.__get = () => ({ M, WIN, WINCTX, TEAMS, MY_SEED, UNDO, BASE_MODEL });
     globalThis.__label = label;
+    globalThis.__setModel = m => { M = m; };
     globalThis.__setSeed = s => { MY_SEED = s; };
     globalThis.__storage = k => localStorage.getItem(k);
     globalThis.__fireStorage = (key, newValue) => { for (const f of (__events.storage || [])) f({ key, newValue }); };

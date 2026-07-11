@@ -1,6 +1,5 @@
 (()=>{
 "use strict";
-const BASE={1:{A:"S1",B:"S16"},2:{A:"S9",B:"S8"},3:{A:"S5",B:"S12"},4:{A:"S13",B:"S4"},5:{A:"S3",B:"S14"},6:{A:"S11",B:"S6"},7:{A:"S7",B:"S10"},8:{A:"S15",B:"S2"},9:{A:{W:1},B:{W:2}},10:{A:{W:3},B:{W:4}},11:{A:{W:5},B:{W:6}},12:{A:{W:7},B:{W:8}},13:{A:{L:1},B:{L:2}},14:{A:{L:3},B:{L:4}},15:{A:{L:5},B:{L:6}},16:{A:{L:7},B:{L:8}},17:{A:{W:13},B:{L:12}},18:{A:{W:14},B:{L:11}},19:{A:{W:15},B:{L:10}},20:{A:{W:16},B:{L:9}},21:{A:{W:9},B:{W:10}},22:{A:{W:11},B:{W:12}},23:{A:{W:17},B:{W:18}},24:{A:{W:19},B:{W:20}},25:{A:{W:24},B:{L:22}},26:{A:{W:23},B:{L:21}},27:{A:{W:21},B:{W:25}},28:{A:{W:22},B:{W:26}},29:{A:{L:27},B:{L:28}},30:{A:{W:27},B:{W:28}}};
 const MAX_IMG_BYTES=15*1024*1024, MAX_IMG_PIXELS=24e6;
 let workerPromise=null, ocrRunning=false;
 const $=id=>document.getElementById(id),clone=o=>JSON.parse(JSON.stringify(o));
@@ -114,7 +113,7 @@ function create(){
  const teamCount=names.filter(Boolean).length,byeCount=16-teamCount,resultCount=Object.keys(WIN).length;
  if(!confirm(`Vytvoriť pavúka: ${teamCount} dvojíc + ${byeCount} BYE. Nahradí aktuálny turnaj${resultCount?` vrátane ${resultCount} zapísaných výsledkov`:""} (vrátiť sa dá tlačidlom Späť). Pokračovať?`))return;
  pushUndo();
- M=clone(BASE);
+ M=clone(BASE_MODEL);
  for(const k of Object.keys(TEAMS))delete TEAMS[k];
  for(let i=1;i<=16;i++){const s="S"+i,n=names[i-1];if(n)TEAMS[s]=n;else for(let id=1;id<=8;id++){if(M[id].A===s)M[id].A=BYE;if(M[id].B===s)M[id].B=BYE}}
  WIN={};WINCTX={};

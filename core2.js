@@ -21,6 +21,35 @@ function teamFromText(value){
  return name?{seed:"S"+m[1],name}:null;
 }
 function scoreSide(value){const m=String(value??"").match(/\b([0-2])\s*:\s*([0-2])\b/);if(!m||m[1]===m[2])return null;return +m[1]>+m[2]?"A":"B"}
+// Rozohraný/dohraný oficiálny hárok má v kolách II–F už VYRIEŠENÉ mená
+// (napr. Z9: „... (S1) vs ... (S8)"), nie odkazy W1/W2. Priamy zápis seedov
+// by v modeli vyrobil duplicity. Preto sa pre zápasy 9–30 seed prevedie na
+// štrukturálny odkaz: účastník = víťaz/porazený svojho POSLEDNÉHO
+// odohraného zápasu. Chýbajúce riadky doplní štandardné prepojenie
+// BASE_MODEL (rovnaké vo všetkých turnajoch SVF).
+function finalizeModel(model,rows){
+ for(let n=1;n<=8;n++)if(!model[n])return null; // 1. kolo (nasadenie) musí byť v súbore
+ const winnerSide={};for(const r of rows)if(winnerSide[r.num]===undefined)winnerSide[r.num]=r.winnerSide;
+ const out={},outcome={},played={};
+ const seedOf=s=>typeof s==="string"?s:(s.W?outcome[s.W]?.w:outcome[s.L]?.l)||null;
+ const convert=s=>{if(typeof s==="string"&&s!==BYE&&played[s])return played[s].won?{W:played[s].id}:{L:played[s].id};return s};
+ for(let num=1;num<=30;num++){
+  const m=model[num]||BASE_MODEL[num];
+  out[num]=num>8?{A:convert(m.A),B:convert(m.B)}:{A:m.A,B:m.B};
+  const sA=seedOf(out[num].A),sB=seedOf(out[num].B);
+  if(!sA||!sB)continue;
+  let w=null;
+  if(sA===BYE&&sB===BYE)w=BYE;
+  else if(sA===BYE)w=sB;else if(sB===BYE)w=sA;
+  else{const ws=winnerSide[num];if(ws)w=ws==="A"?sA:sB}
+  if(!w)continue;
+  const l=sA===w?sB:sA;
+  outcome[num]={w,l};
+  if(w!==BYE)played[w]={id:num,won:true};
+  if(l!==BYE)played[l]={id:num,won:false};
+ }
+ return out;
+}
 function applyParsed(res){
  if(res.model&&!validateModel(res.model))throw Error("Importovaný rozpis je nekonzistentný (duplicitné alebo neplatné prepojenia) — nič sa nezmenilo");
  // Import nahrádza celý turnaj — pri rozohranom turnaji ho treba výslovne potvrdiť.
@@ -40,7 +69,7 @@ function applyParsed(res){
 }
 function parseExcelDraw(ws){const grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""}),rows=[],model={},teams=[];let hdr=-1,numCol=0,aCol=5,bCol=7,resCol=8;for(let i=0;i<grid.length;i++){const r=grid[i].map(x=>String(x).trim());if(r.some(x=>/^Tím\s*1$/i.test(x))&&r.some(x=>/^Tím\s*2$/i.test(x))){hdr=i;numCol=r.findIndex(x=>/^Č\.?$/i.test(x));aCol=r.findIndex(x=>/^Tím\s*1$/i.test(x));bCol=r.findIndex(x=>/^Tím\s*2$/i.test(x));resCol=r.findIndex(x=>/^Výsledok$/i.test(x));if(numCol<0)throw Error("V hárku chýba stĺpec Č. (číslo zápasu)");break}}if(hdr<0)hdr=4;for(let i=hdr+1;i<grid.length;i++){const r=grid[i],num=+r[numCol];
 // Number.isInteger: NaN prejde cez porovnania <1/>30 a vyrobil by kľúč model[NaN].
-if(!Number.isInteger(num)||num<1||num>30)continue;const A=parseSlotText(r[aCol]),B=parseSlotText(r[bCol]);if(A&&B)model[num]={A,B};const ta=teamFromText(r[aCol]),tb=teamFromText(r[bCol]);if(ta)teams.push(ta);if(tb)teams.push(tb);rows.push({num,winnerSide:resCol<0?null:scoreSide(r[resCol])})}return{rows,model:Object.keys(model).length===30?model:null,teams}}
+if(!Number.isInteger(num)||num<1||num>30)continue;const A=parseSlotText(r[aCol]),B=parseSlotText(r[bCol]);if(A&&B)model[num]={A,B};const ta=teamFromText(r[aCol]),tb=teamFromText(r[bCol]);if(ta)teams.push(ta);if(tb)teams.push(tb);rows.push({num,winnerSide:resCol<0?null:scoreSide(r[resCol])})}return{rows,model:finalizeModel(model,rows),teams}}
 function parseSeeding(ws){const grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""}),teams=[];for(const row of grid){let si=-1,seed=null;for(let i=row.length-1;i>=0;i--){const m=String(row[i]).trim().match(/^S(1[0-6]|[1-9])$/i);if(m){si=i;seed="S"+m[1];break}}if(si<0)continue;let found=null;for(let i=si-1;i>=0;i--){const c=String(row[i]).replace(/\s+/g," ").trim();if(!c)continue;const m=c.match(/\(S(1[0-6]|[1-9])\)\s*$/i);if(m&&"S"+m[1]===seed){const name=c.replace(/\s*\(S\d+\)\s*$/i,"").trim();if(name)found={seed,name};break}}if(found)teams.push(found)}return teams}
 function parsePdfText(text){const rows=[],model={},teams=[];
 // Bez lookbehind (Safari<16.4 by inak spadol na parse celého súboru) a s
@@ -50,7 +79,7 @@ const VS_TEST=/(^|[^A-Za-z0-9_])vs\.?([^A-Za-z0-9_]|$)/i,VS_SPLIT=/\s+vs\.?\s+/i
 // Pred parsovaním slotu odstráň úvodné číslo zápasu (ľavá strana) a koncové
 // skóre (pravá strana) — inak by W/L riadky s výsledkom vôbec neprešli.
 const stripNum=v=>String(v).replace(/^\s*\d{1,2}\s*[.)]?\s*/,""),stripScore=v=>String(v).replace(/\b[0-2]\s*:\s*[0-2]\b.*$/,"").trim();
-for(const line of text.split(/\n+/)){const h=line.match(/^\s*(\d{1,2})\b/);if(!h||!VS_TEST.test(line))continue;const num=+h[1];if(num<1||num>30)continue;const p=line.split(VS_SPLIT),A=parseSlotText(stripScore(stripNum(p[0]))),B=parseSlotText(stripScore(p[1]));if(A&&B)model[num]={A,B};const ta=teamFromText(p[0]),tb=teamFromText(p[1]);if(ta)teams.push(ta);if(tb)teams.push(tb);rows.push({num,winnerSide:scoreSide(p[1])})}return{rows,model:Object.keys(model).length===30?model:null,teams}}
+for(const line of text.split(/\n+/)){const h=line.match(/^\s*(\d{1,2})\b/);if(!h||!VS_TEST.test(line))continue;const num=+h[1];if(num<1||num>30)continue;const p=line.split(VS_SPLIT),A=parseSlotText(stripScore(stripNum(p[0]))),B=parseSlotText(stripScore(p[1]));if(A&&B)model[num]={A,B};const ta=teamFromText(p[0]),tb=teamFromText(p[1]);if(ta)teams.push(ta);if(tb)teams.push(tb);rows.push({num,winnerSide:scoreSide(p[1])})}return{rows,model:finalizeModel(model,rows),teams}}
 
 function importDoneMsg(kind,res,extra){
  let t=`${kind} načítaný: 30 zápasov a presné prepojenia.${extra||""}`;
