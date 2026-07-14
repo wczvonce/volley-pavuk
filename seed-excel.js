@@ -1,11 +1,20 @@
 (() => {
   "use strict";
 
-  const MAX_SEEDS = 16;
-  const FEMALE_WORDS = /\b(zeny|zena|women|woman|female|damske|damy)\b/;
-  const MALE_WORDS = /\b(muzi|muz|men|male|pani)\b/;
+  const DRAW_SIZE = 16;
+  const BASE_MODEL = {
+    1:{A:"S1",B:"S16"},2:{A:"S9",B:"S8"},3:{A:"S5",B:"S12"},4:{A:"S13",B:"S4"},
+    5:{A:"S3",B:"S14"},6:{A:"S11",B:"S6"},7:{A:"S7",B:"S10"},8:{A:"S15",B:"S2"},
+    9:{A:{W:1},B:{W:2}},10:{A:{W:3},B:{W:4}},11:{A:{W:5},B:{W:6}},12:{A:{W:7},B:{W:8}},
+    13:{A:{L:1},B:{L:2}},14:{A:{L:3},B:{L:4}},15:{A:{L:5},B:{L:6}},16:{A:{L:7},B:{L:8}},
+    17:{A:{W:13},B:{L:12}},18:{A:{W:14},B:{L:11}},19:{A:{W:15},B:{L:10}},20:{A:{W:16},B:{L:9}},
+    21:{A:{W:9},B:{W:10}},22:{A:{W:11},B:{W:12}},23:{A:{W:17},B:{W:18}},24:{A:{W:19},B:{W:20}},
+    25:{A:{W:24},B:{L:22}},26:{A:{W:23},B:{L:21}},27:{A:{W:21},B:{W:25}},28:{A:{W:22},B:{W:26}},
+    29:{A:{L:27},B:{L:28}},30:{A:{W:27},B:{W:28}}
+  };
 
   const $ = (id) => document.getElementById(id);
+  const clone = (value) => JSON.parse(JSON.stringify(value));
 
   function normalize(value) {
     return String(value ?? "")
@@ -16,195 +25,207 @@
       .trim();
   }
 
-  function cleanName(value) {
+  function clean(value) {
     return String(value ?? "").replace(/\s+/g, " ").trim();
   }
 
-  function isFemaleLabel(value) {
-    return FEMALE_WORDS.test(normalize(value));
-  }
-
-  function isMaleLabel(value) {
+  function isMaleMarker(value) {
     const text = normalize(value);
-    return !FEMALE_WORDS.test(text) && MALE_WORDS.test(text);
+    return /\bmuzi\b/.test(text) || /\bmen\b/.test(text) || /^male$/.test(text);
   }
 
-  function joinPlayer(firstName, surname) {
-    return [cleanName(firstName), cleanName(surname)].filter(Boolean).join(" ").trim();
+  function isPlayerOneHeader(value) {
+    return /^(hrac( c| cislo)? 1|player( no| number)? 1|player one)$/.test(normalize(value));
   }
 
-  function joinTeam(player1, player2) {
-    const a = cleanName(player1);
-    const b = cleanName(player2);
+  function isPlayerTwoHeader(value) {
+    return /^(hrac( c| cislo)? 2|player( no| number)? 2|player two)$/.test(normalize(value));
+  }
+
+  function isSeedHeader(value) {
+    return /^(#|c|cislo|seed|poradie|rank)$/.test(normalize(value));
+  }
+
+  function teamName(player1, player2) {
+    const a = clean(player1);
+    const b = clean(player2);
     return a && b ? `${a} / ${b}` : "";
   }
 
-  function findAll(row, predicate) {
-    const indexes = [];
-    row.forEach((cell, index) => {
-      if (predicate(normalize(cell), cell)) indexes.push(index);
+  function compactSequential(values, label) {
+    let last = -1;
+    values.forEach((value, index) => { if (value) last = index; });
+    if (last < 0) return [];
+    const out = values.slice(0, last + 1);
+    const missing = [];
+    out.forEach((value, index) => { if (!value) missing.push(`${label}${index + 1}`); });
+    if (missing.length) throw new Error(`V nasadení chýbajú riadky: ${missing.join(", ")}`);
+    return out;
+  }
+
+  function parseMenSeedingSheet(sheetName, worksheet) {
+    const grid = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "" });
+
+    for (let markerRow = 0; markerRow < grid.length; markerRow++) {
+      const markerCol = (grid[markerRow] || []).findIndex(isMaleMarker);
+      if (markerCol < 0) continue;
+
+      for (let headerRow = markerRow; headerRow < Math.min(grid.length, markerRow + 10); headerRow++) {
+        const row = grid[headerRow] || [];
+        const player1Col = row.findIndex((value, col) => col >= Math.max(0, markerCol - 2) && isPlayerOneHeader(value));
+        const player2Col = row.findIndex((value, col) => col > player1Col && isPlayerTwoHeader(value));
+        if (player1Col < 0 || player2Col < 0) continue;
+
+        let seedCol = -1;
+        for (let col = player1Col - 1; col >= Math.max(0, markerCol - 3); col--) {
+          if (isSeedHeader(row[col])) {
+            seedCol = col;
+            break;
+          }
+        }
+        if (seedCol < 0) seedCol = Math.max(0, player1Col - 1);
+
+        const direct = [];
+        const qualification = [];
+        const reserves = [];
+
+        for (let dataRow = headerRow + 1; dataRow < grid.length; dataRow++) {
+          const data = grid[dataRow] || [];
+          const code = clean(data[seedCol]);
+          if (!code) continue;
+
+          const name = teamName(data[player1Col], data[player2Col]);
+          if (!name) continue;
+
+          if (/^\d+$/.test(code)) {
+            const seed = Number(code);
+            if (seed >= 1 && seed <= DRAW_SIZE) direct[seed - 1] = name;
+            continue;
+          }
+
+          const qualifier = code.match(/^Q\s*(\d+)$/i);
+          if (qualifier) {
+            qualification[Number(qualifier[1]) - 1] = name;
+            continue;
+          }
+
+          if (/^(res\.?|reserve)$/i.test(code)) reserves.push(name);
+        }
+
+        const directTeams = compactSequential(direct, "");
+        const qualificationTeams = compactSequential(qualification, "Q");
+        if (!directTeams.length) continue;
+
+        return {
+          sheetName,
+          directTeams,
+          qualificationTeams,
+          reserves,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function extractMenSeeding(workbook) {
+    for (const sheetName of workbook.SheetNames || []) {
+      const parsed = parseMenSeedingSheet(sheetName, workbook.Sheets[sheetName]);
+      if (parsed) return parsed;
+    }
+    throw new Error('V Exceli som nenašiel hlavnú tabuľku označenú „MUŽI / MEN“. Pomocné hárky Muži/Ženy sa nepoužívajú.');
+  }
+
+  function buildMainDraw(parsed) {
+    const directCount = parsed.directTeams.length;
+    const qualificationCount = parsed.qualificationTeams.length;
+    const registeredCount = directCount + qualificationCount;
+
+    if (directCount > DRAW_SIZE) throw new Error(`Priamo nasadených dvojíc je ${directCount}, ale pavúk má iba ${DRAW_SIZE} miest.`);
+    if (registeredCount === 0) throw new Error("V mužskej časti nie sú žiadne dvojice.");
+
+    let slots;
+    let qualifierSlots = 0;
+    let byeCount = 0;
+
+    if (registeredCount <= DRAW_SIZE) {
+      // Ak je celkovo najviac 16 prihlásených dvojíc, kvalifikácia nie je potrebná.
+      // Všetky dvojice idú do hlavnej súťaže a až neobsadené miesta sú BYE.
+      slots = parsed.directTeams.concat(parsed.qualificationTeams).slice(0, DRAW_SIZE);
+      byeCount = DRAW_SIZE - slots.length;
+      while (slots.length < DRAW_SIZE) slots.push("");
+    } else {
+      // Pri viac než 16 prihlásených ostávajú číselné riadky priamo v hlavnej súťaži.
+      // Zvyšok 16-členného pavúka doplnia postupujúci z kvalifikácie, nie BYE.
+      qualifierSlots = DRAW_SIZE - directCount;
+      if (qualifierSlots <= 0) throw new Error("Hlavná súťaž je už plná a kvalifikácia nemá voľné postupové miesta.");
+      slots = parsed.directTeams.slice();
+      for (let i = 1; i <= qualifierSlots; i++) slots.push(`Postupujúci z kvalifikácie ${i}`);
+    }
+
+    return {
+      ...parsed,
+      slots,
+      directCount,
+      qualificationCount,
+      registeredCount,
+      qualifierSlots,
+      byeCount,
+    };
+  }
+
+  function replaceSeedWithBye(seed) {
+    for (let matchId = 1; matchId <= 8; matchId++) {
+      if (M[matchId].A === seed) M[matchId].A = BYE;
+      if (M[matchId].B === seed) M[matchId].B = BYE;
+    }
+  }
+
+  function applyMainDraw(draw) {
+    M = clone(BASE_MODEL);
+
+    draw.slots.forEach((name, index) => {
+      const seed = `S${index + 1}`;
+      TEAMS[seed] = name || "BYE";
+      if (!name) replaceSeedWithBye(seed);
     });
-    return indexes;
-  }
 
-  function parseTwoPlayerColumns(grid) {
-    for (let rowIndex = 0; rowIndex < grid.length; rowIndex++) {
-      const row = grid[rowIndex] || [];
-      const firstNameCols = findAll(row, (text) => /^(meno|first name|name)$/.test(text));
-      const surnameCols = findAll(row, (text) => /^(priezvisko|surname|last name)$/.test(text));
-      if (firstNameCols.length < 2 || surnameCols.length < 2) continue;
+    WIN = {};
+    WINCTX = {};
+    MY_SEED = "S1";
+    try { localStorage.setItem("pavuk_my_seed", MY_SEED); } catch {}
 
-      const columns = {
-        first1: firstNameCols[0],
-        surname1: surnameCols.find((col) => col > firstNameCols[0] && col < firstNameCols[1]) ?? surnameCols[0],
-        first2: firstNameCols[1],
-        surname2: surnameCols.find((col) => col > firstNameCols[1]) ?? surnameCols[1],
-      };
-      const teams = [];
-      for (let i = rowIndex + 1; i < grid.length && teams.length < MAX_SEEDS; i++) {
-        const data = grid[i] || [];
-        const player1 = joinPlayer(data[columns.first1], data[columns.surname1]);
-        const player2 = joinPlayer(data[columns.first2], data[columns.surname2]);
-        const team = joinTeam(player1, player2);
-        if (team) teams.push(team);
-      }
-      if (teams.length) return teams;
-    }
-    return [];
-  }
+    $("seedReview")?.classList.add("hidden");
+    prune();
+    render();
 
-  function isMalePlayerOneHeader(text) {
-    return /^(hrac( c| cislo)? 1|player( no)? 1|player one)$/.test(text);
-  }
-
-  function isMalePlayerTwoHeader(text) {
-    return /^(hrac( c| cislo)? 2|player( no)? 2|player two)$/.test(text);
-  }
-
-  function parseExplicitMaleBlock(grid) {
-    let maleMarker = null;
-    for (let rowIndex = 0; rowIndex < grid.length; rowIndex++) {
-      const row = grid[rowIndex] || [];
-      for (let col = 0; col < row.length; col++) {
-        if (isMaleLabel(row[col])) {
-          maleMarker = { row: rowIndex, col };
-          break;
-        }
-      }
-      if (maleMarker) break;
-    }
-    if (!maleMarker) return [];
-
-    for (let rowIndex = maleMarker.row; rowIndex < Math.min(grid.length, maleMarker.row + 12); rowIndex++) {
-      const row = grid[rowIndex] || [];
-      const normalized = row.map(normalize);
-      const player1Col = normalized.findIndex((text, col) => col >= Math.max(0, maleMarker.col - 1) && isMalePlayerOneHeader(text));
-      const player2Col = normalized.findIndex((text, col) => col > player1Col && isMalePlayerTwoHeader(text));
-      if (player1Col < 0 || player2Col < 0) continue;
-
-      let seedCol = -1;
-      for (let col = player1Col - 1; col >= Math.max(0, maleMarker.col - 2); col--) {
-        if (/^(#|c|cislo|seed|poradie)$/.test(normalized[col])) {
-          seedCol = col;
-          break;
-        }
-      }
-      if (seedCol < 0) seedCol = Math.max(0, player1Col - 1);
-
-      const teams = [];
-      for (let i = rowIndex + 1; i < grid.length && teams.length < MAX_SEEDS; i++) {
-        const data = grid[i] || [];
-        const seedText = cleanName(data[seedCol]);
-        if (!/^\d+$/.test(seedText)) continue; // Q1, reserves and notes are never main-draw seeds.
-        const seed = Number(seedText);
-        if (seed < 1 || seed > MAX_SEEDS) continue;
-        const team = joinTeam(data[player1Col], data[player2Col]);
-        if (team) teams[seed - 1] = team;
-      }
-      if (teams.some(Boolean)) return teams;
-    }
-    return [];
-  }
-
-  function extractMaleTeams(workbook) {
-    const sheetNames = workbook.SheetNames || [];
-    const maleSheets = sheetNames.filter((name) => isMaleLabel(name));
-
-    for (const sheetName of maleSheets) {
-      const grid = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: "" });
-      const teams = parseTwoPlayerColumns(grid);
-      if (teams.length) return { teams: teams.slice(0, MAX_SEEDS), sheetName, method: "male-sheet" };
-
-      const blockTeams = parseExplicitMaleBlock(grid);
-      if (blockTeams.some(Boolean)) return { teams: blockTeams.slice(0, MAX_SEEDS), sheetName, method: "male-block" };
+    if (draw.qualifierSlots > 0) {
+      showMessage(
+        `Pavúk vytvorený: ${draw.directCount} priamo nasadených dvojíc + ${draw.qualifierSlots} miest pre postupujúcich z kvalifikácie. ` +
+        `V kvalifikácii je ${draw.qualificationCount} dvojíc, rezervy: ${draw.reserves.length}, BYE: 0.`,
+        "ok"
+      );
+    } else {
+      showMessage(`Pavúk vytvorený: ${draw.registeredCount} dvojíc, ${draw.byeCount} BYE.`, "ok");
     }
 
-    // A combined sheet is accepted only when it contains an explicit MUŽI/MEN marker.
-    // Sheets named Ženy/Women are always skipped and are never used as a fallback.
-    for (const sheetName of sheetNames) {
-      if (isFemaleLabel(sheetName)) continue;
-      const grid = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: "" });
-      const teams = parseExplicitMaleBlock(grid);
-      if (teams.some(Boolean)) return { teams: teams.slice(0, MAX_SEEDS), sheetName, method: "combined-male-block" };
-    }
-
-    throw new Error('V Exceli som nenašiel mužské nasadenie. Použi hárok „Muži“ alebo tabuľku označenú „MUŽI / MEN“. Hárok Ženy sa zámerne ignoruje.');
-  }
-
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function showMessage(text, className = "") {
     const message = $("msg");
+    if (!message) return;
     message.textContent = text;
     message.className = `msg ${className}`;
   }
 
-  function showExcelReview(result) {
-    const list = $("seedRows");
-    const section = $("seedReview");
-    const preview = $("seedPreview");
-    const summary = $("seedSummary");
-    if (!list || !section) throw new Error("Kontrola nasadenia nie je pripravená");
-
-    list.innerHTML = "";
-    const names = Array.from({ length: MAX_SEEDS }, (_, index) => cleanName(result.teams[index]));
-    names.forEach((name, index) => {
-      const row = document.createElement("div");
-      row.className = `seed-row${name ? "" : " bye"}`;
-      row.innerHTML = `<span class="seed-tag">S${index + 1}</span><input class="seed-input" value="${escapeHtml(name)}" placeholder="BYE"><button class="bye-btn">BYE</button>`;
-      const input = row.querySelector("input");
-      input.oninput = () => row.classList.toggle("bye", !input.value.trim());
-      row.querySelector("button").onclick = () => {
-        input.value = "";
-        row.classList.add("bye");
-      };
-      list.append(row);
-    });
-
-    if (preview) {
-      preview.removeAttribute("src");
-      preview.hidden = true;
-    }
-    if (summary) {
-      const count = names.filter(Boolean).length;
-      summary.textContent = `Excel: hárok „${result.sheetName}“. Načítaných ${count} mužských dvojíc, ${MAX_SEEDS - count} BYE. Ženské hárky boli ignorované.`;
-    }
-    section.classList.remove("hidden");
-  }
-
-  async function handleExcelSeeding(file) {
+  async function handleExcel(file) {
     if (!window.XLSX) throw new Error("Knižnica XLSX sa nenačítala");
     const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const result = extractMaleTeams(workbook);
-    showExcelReview(result);
-    const count = result.teams.filter(Boolean).length;
-    showMessage(`Mužské nasadenie načítané: ${count} dvojíc. Skontroluj ho a potvrď vytvorenie pavúka.`, "ok");
+    const parsed = extractMenSeeding(workbook);
+    const draw = buildMainDraw(parsed);
+    applyMainDraw(draw);
+    return draw;
   }
 
   function install() {
@@ -220,16 +241,13 @@
     input.onchange = async (event) => {
       const file = event.target.files?.[0];
       if (!file) return;
-      const isExcel = /\.xlsx?$/i.test(file.name) || /spreadsheetml|ms-excel/.test(file.type);
-      if (!isExcel) {
-        const preview = $("seedPreview");
-        if (preview) preview.hidden = false;
-        return originalImageHandler?.call(input, event);
-      }
 
-      showMessage("Načítavam mužské nasadenie z Excelu…");
+      const isExcel = /\.xlsx?$/i.test(file.name) || /spreadsheetml|ms-excel/.test(file.type);
+      if (!isExcel) return originalImageHandler?.call(input, event);
+
+      showMessage("Načítavam mužské nasadenie a kvalifikáciu z Excelu…");
       try {
-        await handleExcelSeeding(file);
+        await handleExcel(file);
       } catch (error) {
         console.error(error);
         showMessage(`Chyba: ${error.message}`, "err");
@@ -239,6 +257,6 @@
     };
   }
 
-  window.SeedExcelImport = { extractMaleTeams, parseTwoPlayerColumns, parseExplicitMaleBlock };
+  window.SeedExcelImport = { parseMenSeedingSheet, extractMenSeeding, buildMainDraw, handleExcel };
   install();
 })();
